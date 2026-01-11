@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>リアルタイムマルバツ</title>
+<style>
+  body { font-family:sans-serif; text-align:center; }
+  .board { 
+    display:grid; 
+    grid-template-columns: repeat(3,80px); 
+    margin:auto; 
+  }
+  .cell {
+    width:80px;height:80px;
+    border:1px solid black;
+    font-size:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<h2>リアルタイム マルバツ</h2>
+<div id="turn"></div>
+<div class="board" id="board"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const room = "room1"; // とりあえず固定
+
+  socket.emit("join", room);
+
+  const boardDiv = document.getElementById("board");
+  const turnDiv = document.getElementById("turn");
+
+  function render(state){
+    boardDiv.innerHTML = "";
+    turnDiv.textContent = "手番: " + state.turn;
+
+    state.board.forEach((cell, i)=>{
+      const div = document.createElement("div");
+      div.className = "cell";
+      div.textContent = cell;
+      div.onclick = ()=> {
+        socket.emit("move", {room:room, index:i});
+      };
+      boardDiv.appendChild(div);
+    });
+  }
+
+  socket.on("state", state=>{
+    render(state);
+  });
+</script>
+
+</body>
+</html>
