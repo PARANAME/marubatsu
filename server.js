@@ -14,7 +14,9 @@ rooms = {
   room1 : {
     players : {
       socketId : { name:"🐰", pos:0 }
-    }
+    },
+    winner: null,
+    finished: false
   }
 }
 */
@@ -31,7 +33,9 @@ io.on("connection", socket => {
 
     if (!rooms[room]) {
       rooms[room] = {
-        players: {}
+        players: {},
+        winner: null,
+        finished: false
       };
     }
 
@@ -51,13 +55,25 @@ io.on("connection", socket => {
     let game = rooms[room];
     if (!game) return;
     if (!game.players[socket.id]) return;
+    
+    // ゴール済みなら何もしない
+    if (game.finished) return;
 
     // 前に進む
     game.players[socket.id].pos += 10;
 
-    // 上限（ゴール）
-    if (game.players[socket.id].pos > 1000) {
+    // ゴール判定
+    if (game.players[socket.id].pos >= 1000) {
       game.players[socket.id].pos = 1000;
+      
+      // 初めてのゴール = 勝者確定
+      if (!game.finished) {
+        game.finished = true;
+        game.winner = {
+          id: socket.id,
+          name: game.players[socket.id].name
+        };
+      }
     }
 
     // 全員に同期

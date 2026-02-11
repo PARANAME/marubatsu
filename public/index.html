@@ -16,6 +16,13 @@ body{
   margin:10px 0;
   overflow:hidden;
 }
+.track::after {
+  content: '🏁';
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  font-size: 40px;
+}
 .player{
   position:absolute;
   top:10px;
@@ -27,6 +34,24 @@ button{
   width:100%;
   padding:20px;
 }
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+#winner {
+  font-size: 50px;
+  text-align: center;
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  border-radius: 10px;
+  animation: celebrate 1s ease-in-out infinite;
+  display: none;
+}
+@keyframes celebrate {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
 </style>
 </head>
 
@@ -35,6 +60,8 @@ button{
 <h2>🏁 どうぶつレース</h2>
 
 <button id="tap">たたく！</button>
+
+<div id="winner"></div>
 
 <div id="field"></div>
 
@@ -53,7 +80,24 @@ document.getElementById("tap").onclick = ()=>{
 socket.on("state", game=>{
 
   const field = document.getElementById("field");
+  const winnerDiv = document.getElementById("winner");
+  const tapButton = document.getElementById("tap");
+  
   field.innerHTML="";
+
+  // ゴール判定と勝者表示
+  if (game.finished && game.winner) {
+    winnerDiv.style.display = "block";
+    winnerDiv.innerHTML = `
+      <div>🎉 優勝 🎉</div>
+      <div style="font-size:80px; margin:10px 0;">${game.winner.name}</div>
+      <div>おめでとう！</div>
+    `;
+    tapButton.disabled = true;
+  } else {
+    winnerDiv.style.display = "none";
+    tapButton.disabled = false;
+  }
 
   Object.values(game.players).forEach(p=>{
 
