@@ -1,60 +1,76 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>リアルタイムマルバツ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/socket.io/socket.io.js"></script>
+
 <style>
-  body { font-family:sans-serif; text-align:center; }
-  .board { 
-    display:grid; 
-    grid-template-columns: repeat(3,80px); 
-    margin:auto; 
-  }
-  .cell {
-    width:80px;height:80px;
-    border:1px solid black;
-    font-size:50px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-  }
+body{
+  font-family:sans-serif;
+  padding:10px;
+}
+.track{
+  position:relative;
+  height:60px;
+  border:2px solid #ccc;
+  margin:10px 0;
+  overflow:hidden;
+}
+.player{
+  position:absolute;
+  top:10px;
+  font-size:40px;
+  transition: transform 0.1s linear;
+}
+button{
+  font-size:30px;
+  width:100%;
+  padding:20px;
+}
 </style>
 </head>
+
 <body>
 
-<h2>リアルタイム マルバツ</h2>
-<div id="turn"></div>
-<div class="board" id="board"></div>
+<h2>🏁 どうぶつレース</h2>
 
-<script src="/socket.io/socket.io.js"></script>
+<button id="tap">たたく！</button>
+
+<div id="field"></div>
+
 <script>
-  const socket = io();
-  const room = "room1"; // とりあえず固定
+const socket = io();
 
-  socket.emit("join", room);
+const room = "family";
+const name = ["🐰","🐻","🐱","🐼"][Math.floor(Math.random()*4)];
 
-  const boardDiv = document.getElementById("board");
-  const turnDiv = document.getElementById("turn");
+socket.emit("join",{room,name});
 
-  function render(state){
-    boardDiv.innerHTML = "";
-    turnDiv.textContent = "手番: " + state.turn;
+document.getElementById("tap").onclick = ()=>{
+  socket.emit("tap",{room});
+};
 
-    state.board.forEach((cell, i)=>{
-      const div = document.createElement("div");
-      div.className = "cell";
-      div.textContent = cell;
-      div.onclick = ()=> {
-        socket.emit("move", {room:room, index:i});
-      };
-      boardDiv.appendChild(div);
-    });
-  }
+socket.on("state", game=>{
 
-  socket.on("state", state=>{
-    render(state);
+  const field = document.getElementById("field");
+  field.innerHTML="";
+
+  Object.values(game.players).forEach(p=>{
+
+    const track = document.createElement("div");
+    track.className="track";
+
+    const player = document.createElement("div");
+    player.className="player";
+    player.textContent=p.name;
+
+    // ← 横に走る部分
+    player.style.transform = `translateX(${p.pos}px)`;
+
+    track.appendChild(player);
+    field.appendChild(track);
   });
+});
 </script>
 
 </body>

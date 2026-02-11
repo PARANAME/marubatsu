@@ -1,44 +1,84 @@
 const express = require("express");
 const app = express();
 const http = require("http").createServer(app);
-const io = require("socket.io")(http);
+const io = require("socket.io")(http, {
+  transports: ["websocket", "polling"] // Render対策
+});
 
 app.use(express.static("public"));
 
+/*
+roomごとの状態
+
+rooms = {
+  room1 : {
+    players : {
+      socketId : { name:"🐰", pos:0 }
+    }
+  }
+}
+*/
 let rooms = {};
 
 io.on("connection", socket => {
 
-  socket.on("join", room => {
+  console.log("connect:", socket.id);
+
+  // ===== 部屋参加 =====
+  socket.on("join", ({room, name}) => {
+
     socket.join(room);
 
     if (!rooms[room]) {
       rooms[room] = {
-        board: Array(9).fill(""),
-        turn: "X"
+        players: {}
       };
     }
 
-    socket.emit("state", rooms[room]);
+    // プレイヤー登録
+    rooms[room].players[socket.id] = {
+      name: name || "🐱",
+      pos: 0
+    };
+
+    // 全員へ状態送信
+    io.to(room).emit("state", rooms[room]);
   });
 
-  socket.on("move", ({room, index}) => {
+  // ===== ボタン連打 =====
+  socket.on("tap", ({room}) => {
+
     let game = rooms[room];
     if (!game) return;
+    if (!game.players[socket.id]) return;
 
-    // すでに埋まっていたら無視
-    if (game.board[index] !== "") return;
+    // 前に進む
+    game.players[socket.id].pos += 10;
 
-    // 石を置く
-    game.board[index] = game.turn;
+    // 上限（ゴール）
+    if (game.players[socket.id].pos > 1000) {
+      game.players[socket.id].pos = 1000;
+    }
 
-    // 手番交代
-    game.turn = game.turn === "X" ? "O" : "X";
-
-    // 部屋の全員に盤面送信
+    // 全員に同期
     io.to(room).emit("state", game);
+  });
+
+  // ===== 切断 =====
+  socket.on("disconnect", () => {
+
+    for (let room in rooms) {
+      if (rooms[room].players[socket.id]) {
+        delete rooms[room].players[socket.id];
+        io.to(room).emit("state", rooms[room]);
+      }
+    }
+
+    console.log("disconnect:", socket.id);
   });
 
 });
 
-http.listen(process.env.PORT || 3000);
+http.listen(process.env.PORT || 3000, () => {
+  console.log("Race server running");
+});
