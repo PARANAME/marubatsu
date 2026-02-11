@@ -60,6 +60,7 @@ button:disabled {
 <h2>🏁 どうぶつレース</h2>
 
 <button id="tap">たたく！</button>
+<button id="reset" style="display:none; margin-top:10px; background:#4CAF50; color:white;">もう一度遊ぶ！</button>
 
 <div id="winner"></div>
 
@@ -77,6 +78,10 @@ document.getElementById("tap").onclick = ()=>{
   socket.emit("tap",{room});
 };
 
+document.getElementById("reset").onclick = ()=>{
+  socket.emit("reset",{room});
+};
+
 socket.on("state", game=>{
 
   const field = document.getElementById("field");
@@ -84,6 +89,8 @@ socket.on("state", game=>{
   const tapButton = document.getElementById("tap");
   
   field.innerHTML="";
+
+  const resetButton = document.getElementById("reset");
 
   // ゴール判定と勝者表示
   if (game.finished && game.winner) {
@@ -94,9 +101,11 @@ socket.on("state", game=>{
       <div>おめでとう！</div>
     `;
     tapButton.disabled = true;
+    resetButton.style.display = "block";
   } else {
     winnerDiv.style.display = "none";
     tapButton.disabled = false;
+    resetButton.style.display = "none";
   }
 
   Object.values(game.players).forEach(p=>{
