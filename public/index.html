@@ -10,14 +10,34 @@
 body{
   font-family:sans-serif;
   padding:10px;
+  background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 100%);
+  min-height: 100vh;
+  margin: 0;
 }
+
+#app {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+h2 {
+  text-align: center;
+  font-size: 2.5em;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+  margin: 20px 0;
+}
+
 .track{
   position:relative;
   height:60px;
   border:2px solid #ccc;
   margin:10px 0;
-  overflow:hidden;
+  overflow:visible;
+  background: linear-gradient(to right, #90EE90 0%, #98FB98 100%);
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
+
 .track::after {
   content: '🏁';
   position: absolute;
@@ -25,22 +45,95 @@ body{
   top: 10px;
   font-size: 40px;
 }
+
 .player{
   position:absolute;
   top:10px;
   left:0;
   font-size:40px;
   transition: transform 0.1s linear;
+  filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.3));
 }
-button{
-  font-size:30px;
-  width:100%;
-  padding:20px;
+
+/* タップ時のジャンプアニメーション */
+.player.jumping {
+  animation: jump 0.3s ease;
 }
-button:disabled {
+
+@keyframes jump {
+  0%, 100% { 
+    top: 10px;
+  }
+  50% { 
+    top: -5px;
+  }
+}
+
+/* 追い抜き時のキラキラエフェクト */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+  font-size: 30px;
+  animation: sparkleAnimation 0.8s ease-out forwards;
+}
+
+@keyframes sparkleAnimation {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.5) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(1.5) rotate(360deg);
+  }
+}
+
+/* タップボタンのスタイル */
+.tap-button{
+  font-size: 40px;
+  width: 100%;
+  padding: 30px;
+  background: linear-gradient(145deg, #FF6B6B, #FF5252);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 8px 15px rgba(255, 82, 82, 0.3);
+  transition: all 0.1s ease;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.tap-button:active:not(:disabled) {
+  transform: scale(0.95);
+  box-shadow: 0 4px 8px rgba(255, 82, 82, 0.3);
+}
+
+.tap-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: linear-gradient(145deg, #999, #888);
 }
+
+/* タップ時のリップルエフェクト */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(0);
+  animation: ripple-animation 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple-animation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
 .winner {
   font-size: 50px;
   text-align: center;
@@ -49,15 +142,36 @@ button:disabled {
   background: linear-gradient(45deg, #FFD700, #FFA500);
   border-radius: 10px;
   animation: celebrate 1s ease-in-out infinite;
+  box-shadow: 0 5px 15px rgba(255, 165, 0, 0.4);
 }
+
 @keyframes celebrate {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
+
 .reset-button {
   margin-top:10px;
-  background:#4CAF50;
+  background: linear-gradient(145deg, #4CAF50, #45a049);
   color:white;
+  font-size: 30px;
+  padding: 20px;
+  border: none;
+  border-radius: 15px;
+  cursor: pointer;
+  width: 100%;
+  box-shadow: 0 5px 10px rgba(76, 175, 80, 0.3);
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.reset-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 15px rgba(76, 175, 80, 0.4);
+}
+
+.reset-button:active {
+  transform: translateY(0);
 }
 </style>
 </head>
@@ -65,15 +179,21 @@ button:disabled {
 <body>
 
 <div id="app">
-  <h2>🏁 どうぶつレース</h2>
+  <h2>🏁 どうぶつレース 🏁</h2>
 
-  <button @click="tap" :disabled="game.finished">たたく！</button>
+  <button 
+    class="tap-button"
+    @click="tap" 
+    @mousedown="createRipple"
+    :disabled="game.finished">
+    💥 たたく！ 💥
+  </button>
   
   <button 
     v-if="game.finished" 
     @click="reset" 
     class="reset-button">
-    もう一度遊ぶ！
+    🔄 もう一度遊ぶ！
   </button>
 
   <!-- 勝者表示 -->
@@ -87,8 +207,9 @@ button:disabled {
   <div id="field" ref="field">
     <div v-for="(player, id) in game.players" :key="id" class="track">
       <div 
-        class="player" 
-        :style="getPlayerStyle(player)">
+        :class="['player', { jumping: jumpingPlayers[id] }]"
+        :style="getPlayerStyle(player)"
+        :ref="el => { if (el) playerRefs[id] = el }">
         {{ player.name }}
       </div>
     </div>
@@ -109,34 +230,33 @@ createApp({
         winner: null,
         finished: false
       },
-      trackWidth: 800 // デフォルト値
+      trackWidth: 800,
+      jumpingPlayers: {},
+      playerRefs: {},
+      previousPositions: {}
     }
   },
   mounted() {
-    // Socket.io接続
     this.socket = io();
     
-    // 部屋に参加
     this.socket.emit("join", {
       room: this.room,
       name: this.myName
     });
 
-    // サーバーから状態を受信
     this.socket.on("state", (gameState) => {
+      this.checkOvertakes(gameState);
       this.game = gameState;
-      // 状態更新時にトラック幅を更新（DOMが更新された後）
+      
       this.$nextTick(() => {
         this.updateTrackWidth();
       });
     });
 
-    // 初期のトラック幅を設定
     this.$nextTick(() => {
       this.updateTrackWidth();
     });
     
-    // リサイズ対応
     window.addEventListener('resize', this.updateTrackWidth);
   },
   beforeUnmount() {
@@ -145,24 +265,108 @@ createApp({
   methods: {
     tap() {
       this.socket.emit("tap", { room: this.room });
+      
+      const myPlayerId = this.socket.id;
+      this.jumpingPlayers[myPlayerId] = true;
+      
+      setTimeout(() => {
+        this.jumpingPlayers[myPlayerId] = false;
+      }, 300);
     },
     reset() {
       this.socket.emit("reset", { room: this.room });
+      this.previousPositions = {};
+    },
+    createRipple(event) {
+      if (this.game.finished) return;
+      
+      const button = event.currentTarget;
+      const ripple = document.createElement('span');
+      const rect = button.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+      
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple');
+      
+      button.appendChild(ripple);
+      
+      setTimeout(() => {
+        ripple.remove();
+      }, 600);
     },
     updateTrackWidth() {
-      // トラック要素を取得
       const trackElement = document.querySelector('.track');
       if (trackElement) {
-        // トラック全体の幅から、ゴール旗のスペース（60px）とプレイヤーの幅（40px）を引く
         this.trackWidth = trackElement.clientWidth - 100;
       }
     },
     getPlayerStyle(player) {
-      // パーセンテージをピクセルに変換
       const position = (player.pos / 100) * this.trackWidth;
       return {
         transform: `translateX(${position}px)`
       };
+    },
+    checkOvertakes(newGameState) {
+      if (Object.keys(this.previousPositions).length === 0) {
+        Object.keys(newGameState.players).forEach(id => {
+          this.previousPositions[id] = newGameState.players[id].pos;
+        });
+        return;
+      }
+      
+      Object.keys(newGameState.players).forEach(id => {
+        const oldPos = this.previousPositions[id] || 0;
+        const newPos = newGameState.players[id].pos;
+        
+        if (newPos > oldPos) {
+          Object.keys(newGameState.players).forEach(otherId => {
+            if (id !== otherId) {
+              const otherOldPos = this.previousPositions[otherId] || 0;
+              const otherNewPos = newGameState.players[otherId].pos;
+              
+              if (oldPos <= otherOldPos && newPos > otherNewPos) {
+                this.createSparkle(id);
+              }
+            }
+          });
+        }
+        
+        this.previousPositions[id] = newPos;
+      });
+    },
+    createSparkle(playerId) {
+      this.$nextTick(() => {
+        const playerElement = this.playerRefs[playerId];
+        if (!playerElement) return;
+        
+        for (let i = 0; i < 3; i++) {
+          setTimeout(() => {
+            const sparkle = document.createElement('div');
+            sparkle.textContent = '✨';
+            sparkle.className = 'sparkle';
+            
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 30 + Math.random() * 20;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            
+            sparkle.style.setProperty('--tx', `${tx}px`);
+            sparkle.style.setProperty('--ty', `${ty}px`);
+            sparkle.style.left = '50%';
+            sparkle.style.top = '50%';
+            
+            playerElement.appendChild(sparkle);
+            
+            setTimeout(() => {
+              sparkle.remove();
+            }, 800);
+          }, i * 100);
+        }
+      });
     }
   }
 }).mount('#app');
