@@ -28,6 +28,7 @@ body{
 .player{
   position:absolute;
   top:10px;
+  left:0;
   font-size:40px;
   transition: transform 0.1s linear;
 }
@@ -83,11 +84,11 @@ button:disabled {
   </div>
 
   <!-- レーストラック -->
-  <div id="field">
+  <div id="field" ref="field">
     <div v-for="(player, id) in game.players" :key="id" class="track">
       <div 
         class="player" 
-        :style="{ transform: `translateX(${player.pos}px)` }">
+        :style="getPlayerStyle(player)">
         {{ player.name }}
       </div>
     </div>
@@ -107,7 +108,8 @@ createApp({
         players: {},
         winner: null,
         finished: false
-      }
+      },
+      trackWidth: 800 // デフォルト値
     }
   },
   mounted() {
@@ -123,7 +125,22 @@ createApp({
     // サーバーから状態を受信
     this.socket.on("state", (gameState) => {
       this.game = gameState;
+      // 状態更新時にトラック幅を更新（DOMが更新された後）
+      this.$nextTick(() => {
+        this.updateTrackWidth();
+      });
     });
+
+    // 初期のトラック幅を設定
+    this.$nextTick(() => {
+      this.updateTrackWidth();
+    });
+    
+    // リサイズ対応
+    window.addEventListener('resize', this.updateTrackWidth);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.updateTrackWidth);
   },
   methods: {
     tap() {
@@ -131,6 +148,21 @@ createApp({
     },
     reset() {
       this.socket.emit("reset", { room: this.room });
+    },
+    updateTrackWidth() {
+      // トラック要素を取得
+      const trackElement = document.querySelector('.track');
+      if (trackElement) {
+        // トラック全体の幅から、ゴール旗のスペース（60px）とプレイヤーの幅（40px）を引く
+        this.trackWidth = trackElement.clientWidth - 100;
+      }
+    },
+    getPlayerStyle(player) {
+      // パーセンテージをピクセルに変換
+      const position = (player.pos / 100) * this.trackWidth;
+      return {
+        transform: `translateX(${position}px)`
+      };
     }
   }
 }).mount('#app');

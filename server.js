@@ -42,7 +42,7 @@ io.on("connection", socket => {
     // プレイヤー登録
     rooms[room].players[socket.id] = {
       name: name || "🐱",
-      pos: 0
+      pos: 0  // 0〜100のパーセンテージ
     };
 
     // 全員へ状態送信
@@ -59,12 +59,12 @@ io.on("connection", socket => {
     // ゴール済みなら何もしない
     if (game.finished) return;
 
-    // 前に進む
-    game.players[socket.id].pos += 10;
+    // 前に進む（1%ずつ）
+    game.players[socket.id].pos += 1;
 
-    // ゴール判定
-    if (game.players[socket.id].pos >= 1000) {
-      game.players[socket.id].pos = 1000;
+    // ゴール判定（100%到達）
+    if (game.players[socket.id].pos >= 100) {
+      game.players[socket.id].pos = 100;
       
       // 初めてのゴール = 勝者確定
       if (!game.finished) {
