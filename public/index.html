@@ -3,6 +3,8 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="/socket.io/socket.io.js"></script>
+<!-- Vue 3 CDN -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 
 <style>
 body{
@@ -38,7 +40,7 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-#winner {
+.winner {
   font-size: 50px;
   text-align: center;
   margin: 20px 0;
@@ -46,84 +48,92 @@ button:disabled {
   background: linear-gradient(45deg, #FFD700, #FFA500);
   border-radius: 10px;
   animation: celebrate 1s ease-in-out infinite;
-  display: none;
 }
 @keyframes celebrate {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
+}
+.reset-button {
+  margin-top:10px;
+  background:#4CAF50;
+  color:white;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🏁 どうぶつレース</h2>
+<div id="app">
+  <h2>🏁 どうぶつレース</h2>
 
-<button id="tap">たたく！</button>
-<button id="reset" style="display:none; margin-top:10px; background:#4CAF50; color:white;">もう一度遊ぶ！</button>
+  <button @click="tap" :disabled="game.finished">たたく！</button>
+  
+  <button 
+    v-if="game.finished" 
+    @click="reset" 
+    class="reset-button">
+    もう一度遊ぶ！
+  </button>
 
-<div id="winner"></div>
+  <!-- 勝者表示 -->
+  <div v-if="game.finished && game.winner" class="winner">
+    <div>🎉 優勝 🎉</div>
+    <div style="font-size:80px; margin:10px 0;">{{ game.winner.name }}</div>
+    <div>おめでとう！</div>
+  </div>
 
-<div id="field"></div>
+  <!-- レーストラック -->
+  <div id="field">
+    <div v-for="(player, id) in game.players" :key="id" class="track">
+      <div 
+        class="player" 
+        :style="{ transform: `translateX(${player.pos}px)` }">
+        {{ player.name }}
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-const socket = io();
+const { createApp } = Vue;
 
-const room = "family";
-const name = ["🐰","🐻","🐱","🐼"][Math.floor(Math.random()*4)];
+createApp({
+  data() {
+    return {
+      socket: null,
+      room: "family",
+      myName: ["🐰","🐻","🐱","🐼"][Math.floor(Math.random()*4)],
+      game: {
+        players: {},
+        winner: null,
+        finished: false
+      }
+    }
+  },
+  mounted() {
+    // Socket.io接続
+    this.socket = io();
+    
+    // 部屋に参加
+    this.socket.emit("join", {
+      room: this.room,
+      name: this.myName
+    });
 
-socket.emit("join",{room,name});
-
-document.getElementById("tap").onclick = ()=>{
-  socket.emit("tap",{room});
-};
-
-document.getElementById("reset").onclick = ()=>{
-  socket.emit("reset",{room});
-};
-
-socket.on("state", game=>{
-
-  const field = document.getElementById("field");
-  const winnerDiv = document.getElementById("winner");
-  const tapButton = document.getElementById("tap");
-  
-  field.innerHTML="";
-
-  const resetButton = document.getElementById("reset");
-
-  // ゴール判定と勝者表示
-  if (game.finished && game.winner) {
-    winnerDiv.style.display = "block";
-    winnerDiv.innerHTML = `
-      <div>🎉 優勝 🎉</div>
-      <div style="font-size:80px; margin:10px 0;">${game.winner.name}</div>
-      <div>おめでとう！</div>
-    `;
-    tapButton.disabled = true;
-    resetButton.style.display = "block";
-  } else {
-    winnerDiv.style.display = "none";
-    tapButton.disabled = false;
-    resetButton.style.display = "none";
+    // サーバーから状態を受信
+    this.socket.on("state", (gameState) => {
+      this.game = gameState;
+    });
+  },
+  methods: {
+    tap() {
+      this.socket.emit("tap", { room: this.room });
+    },
+    reset() {
+      this.socket.emit("reset", { room: this.room });
+    }
   }
-
-  Object.values(game.players).forEach(p=>{
-
-    const track = document.createElement("div");
-    track.className="track";
-
-    const player = document.createElement("div");
-    player.className="player";
-    player.textContent=p.name;
-
-    // ← 横に走る部分
-    player.style.transform = `translateX(${p.pos}px)`;
-
-    track.appendChild(player);
-    field.appendChild(track);
-  });
-});
+}).mount('#app');
 </script>
 
 </body>

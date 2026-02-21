@@ -1,2 +1,9 @@
 node_modules
 .DS_Store
+
+# Backup files
+public/index_original_backup.html
+public_backup_*
+
+# Migration report
+VUE_MIGRATION_REPORT.md
