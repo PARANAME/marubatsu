@@ -98,17 +98,18 @@ h2 {
   border: none;
   border-radius: 20px;
   cursor: pointer;
-  box-shadow: 0 8px 15px rgba(255, 82, 82, 0.3);
+  box-shadow: 0 8px 0px #cc3333, 0 10px 20px rgba(0,0,0,0.3);
   transition: all 0.1s ease;
   font-weight: bold;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
   position: relative;
   overflow: hidden;
+  transform: translateY(0);
 }
 
 .tap-button:active:not(:disabled) {
-  transform: scale(0.95);
-  box-shadow: 0 4px 8px rgba(255, 82, 82, 0.3);
+  transform: translateY(6px);
+  box-shadow: 0 2px 0px #cc3333, 0 3px 8px rgba(0,0,0,0.2);
 }
 
 .tap-button:disabled {
