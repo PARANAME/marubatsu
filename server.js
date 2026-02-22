@@ -76,6 +76,9 @@ io.on("connection", socket => {
       }
     }
 
+    // 他のプレイヤーにジャンプを通知（送信者自身は除く）
+    socket.broadcast.to(room).emit("jumped", { id: socket.id });
+
     // 全員に同期
     io.to(room).emit("state", game);
   });

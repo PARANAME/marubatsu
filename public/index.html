@@ -244,6 +244,13 @@ createApp({
       name: this.myName
     });
 
+    this.socket.on("jumped", ({ id }) => {
+      this.jumpingPlayers[id] = true;
+      setTimeout(() => {
+        this.jumpingPlayers[id] = false;
+      }, 300);
+    });
+
     this.socket.on("state", (gameState) => {
       this.checkOvertakes(gameState);
       this.game = gameState;
